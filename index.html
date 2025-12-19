@@ -64,6 +64,11 @@ function showTab(id){
 
 <section id="personagens">
 <div class="card"><div id="listaPersonagens"></div></div>
+ <div class="card">
+ <button onclick="exportarPersonagensJSON()">Exportar Personagens</button>
+ <input type="file" accept="application/json" onchange="importarPersonagensJSON(event)">
+</div>
+
 </section>
 
 <section id="atributos"></section>
@@ -265,3 +270,52 @@ document.addEventListener('input',e=>{
 </script>
 </body>
 </html>
+<script>
+/* ================= EXPORTAR PERSONAGENS ================= */
+function exportarPersonagensJSON(){
+ const personagens = JSON.parse(localStorage.getItem('personagensRPG') || '[]');
+
+ if(personagens.length === 0){
+  alert('Nenhum personagem para exportar');
+  return;
+ }
+
+ const blob = new Blob(
+  [JSON.stringify(personagens, null, 2)],
+  { type: 'application/json' }
+ );
+
+ const a = document.createElement('a');
+ a.href = URL.createObjectURL(blob);
+ a.download = 'personagens_rpg.json';
+ a.click();
+}
+
+/* ================= IMPORTAR PERSONAGENS ================= */
+function importarPersonagensJSON(event){
+ const file = event.target.files[0];
+ if(!file) return;
+
+ const reader = new FileReader();
+ reader.onload = () => {
+  try{
+   const dados = JSON.parse(reader.result);
+   if(!Array.isArray(dados)){
+    alert('Arquivo inválido');
+    return;
+   }
+
+   const atuais = JSON.parse(localStorage.getItem('personagensRPG') || '[]');
+   const combinados = atuais.concat(dados);
+
+   localStorage.setItem('personagensRPG', JSON.stringify(combinados));
+   carregarPersonagens();
+   alert('Personagens importados com sucesso!');
+  }catch(e){
+   alert('Erro ao importar JSON');
+  }
+ };
+ reader.readAsText(file);
+}
+</script>
+
