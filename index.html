@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Ficha de RPG</title>
+<style>
+body{font-family:Arial;background:#1b1026;color:#f2e9ff;margin:0}
+header{background:#2a1740;padding:12px;text-align:center;font-size:22px;font-weight:bold}
+nav{display:flex;flex-wrap:wrap;background:#3a1f5c}
+nav button{flex:1 1 50%;padding:12px;background:#3a1f5c;border:none;color:#fff;font-size:16px;cursor:pointer}
+nav button:hover{background:#4a2a73}
+section{display:none;padding:12px}
+section.active{display:block}
+.card{background:#2f1b4a;padding:10px;margin-bottom:10px;border-radius:10px}
+input,textarea{width:100%;background:#2a1740;color:#fff;border:1px solid #5a3a85;border-radius:6px;padding:8px;margin-bottom:6px}
+.attribute{display:grid;grid-template-columns:1fr 70px 80px;gap:6px;align-items:center}
+.bar-container{background:#5a3a85;border-radius:10px;overflow:hidden;height:18px;margin-bottom:6px}
+.bar{height:100%}
+.red{background:#c0392b}
+.blue{background:#2980b9}
+.item{border:1px solid #5a3a85;padding:6px;margin:6px 0;border-radius:6px}
+.log{background:#2a1740;max-height:200px;overflow:auto;padding:6px;font-size:14px}
+@media(max-width:600px){nav button{flex:1 1 100%}}
+</style>
+<script>
+function showTab(id){
+ document.querySelectorAll('section').forEach(s=>s.classList.remove('active'));
+ document.getElementById(id).classList.add('active');
+}
+</script>
+</head>
+
+<body>
+<header>Ficha de Personagem</header>
+
+<nav>
+<button onclick="showTab('descricao')">Descrição</button>
+<button onclick="showTab('personagens')">Personagens</button>
+<button onclick="showTab('atributos')">Atributos</button>
+<button onclick="showTab('historia')">História</button>
+<button onclick="showTab('combate')">Combate</button>
+<button onclick="showTab('itens')">Itens</button>
+<button onclick="showTab('habilidades')">Habilidades</button>
+<button onclick="showTab('dados')">Dados</button>
+<button onclick="showTab('historico')">Histórico</button>
+</nav>
+
+<section id="descricao" class="active">
+<div class="card">
+<button onclick="salvarPersonagem()">Salvar Personagem</button>
+</div>
+<div class="card">
+<label>Imagem da Ficha</label>
+<input id="imgFicha">
+<label>Nome</label><input id="nome">
+<label>Raça</label><input id="raca">
+<label>Classe</label><input id="classe">
+<label>Idade</label><input id="idade">
+<label>Sexo</label><input id="sexo">
+<label>Altura</label><input id="altura">
+<label>Afiliamento Moral</label><input id="moral">
+</div>
+</section>
+
+<section id="personagens">
+<div class="card"><div id="listaPersonagens"></div></div>
+</section>
+
+<section id="atributos"></section>
+
+<section id="historia">
+<textarea id="historiaTxt" rows="8"></textarea>
+</section>
+
+<section id="combate">
+<div class="card">
+<label>Vida</label>
+<input type="number" id="pvAtual" value="100"> /
+<input type="number" id="pvMax" value="100">
+<div class="bar-container"><div id="pvBar" class="bar red"></div></div>
+
+<label>P.T</label>
+<input type="number" id="ptAtual" value="5"> /
+<input type="number" id="ptMax" value="5">
+<div class="bar-container"><div id="ptBar" class="bar blue"></div></div>
+</div>
+</section>
+
+<section id="itens">
+<div class="card">
+<input id="itemNome">
+<textarea id="itemDesc"></textarea>
+<input id="itemImg">
+<button onclick="addItem('itensLista','itemNome','itemDesc','itemImg')">Adicionar</button>
+</div>
+<div id="itensLista"></div>
+</section>
+
+<section id="habilidades">
+<div class="card">
+<input id="habNome">
+<textarea id="habDesc"></textarea>
+<input id="habImg">
+<button onclick="addItem('habLista','habNome','habDesc','habImg')">Adicionar</button>
+</div>
+<div id="habLista"></div>
+</section>
+
+<section id="dados">
+<div class="card">
+<input id="qtd" type="number" value="1">
+<input id="faces" type="number" value="20">
+<input id="mod" type="number" value="0">
+<button onclick="rolarCustom()">Rolar</button>
+<div id="resultado"></div>
+</div>
+</section>
+
+<section id="historico">
+<div class="log" id="log"></div>
+</section>
+
+<script>
+const atributos=[
+ ['Força','d100'],['Defesa','d100'],['Percepção','d20'],
+ ['Inteligência','d20'],['Furtividade','d20'],['Intimidação','d20'],
+ ['Carisma','d20'],['Agilidade','d20'],['Intuição','d20'],
+ ['Poder Mágico','d100'],['Vontade','d100'],['Precisão','d20']
+];
+
+const tabela=[{p:-1,b:-2},{p:0,b:-1},{p:1,b:0},{p:3,b:1},{p:6,b:2},{p:10,b:3},{p:15,b:4},{p:21,b:5},{p:28,b:6}];
+const attDiv=document.getElementById('atributos');
+let limite=20;
+
+atributos.forEach((a,index)=>{
+ const c=document.createElement('div');
+ c.className='card attribute';
+ c.innerHTML=`<b>${a[0]}</b><input type="number" value="1"><button>Rolar</button><div></div>`;
+ const inp=c.children[1],btn=c.children[2],res=c.children[3];
+
+ btn.onclick=()=>{
+  let total=0;
+  document.querySelectorAll('#atributos input').forEach(i=>total+=parseInt(i.value)||0);
+  if(total>limite){alert('Limite de 20 pontos');inp.value=1;return;}
+  let pts=parseInt(inp.value)||0,bonus=0;
+  tabela.forEach(t=>{if(pts>=t.p)bonus=t.b});
+  let faces=a[1]=='d100'?100:20;
+  let conv=a[1]=='d100'?bonus*5:bonus;
+  let r=Math.floor(Math.random()*faces)+1;
+  let s=r+conv;
+  res.textContent=`${r} ${conv>=0?'+':''}${conv} = ${s}`;
+  log.innerHTML+=`<div>${a[0]}: ${res.textContent}</div>`;
+  salvarEstado();
+ };
+ attDiv.appendChild(c);
+});
+
+function rolarCustom(){
+ let q=+qtd.value,f=+faces.value,m=+mod.value;
+ let t=m,r=[];
+ for(let i=0;i<q;i++){let d=Math.floor(Math.random()*f)+1;r.push(d);t+=d;}
+ resultado.textContent=`${q}d${f} [${r.join(', ')}] ${m>=0?'+':''}${m} = ${t}`;
+ log.innerHTML+=`<div>${resultado.textContent}</div>`;
+ salvarEstado();
+}
+
+function addItem(l,n,d,i){
+ const div=document.createElement('div');
+ div.className='item';
+ div.innerHTML=`<b>${document.getElementById(n).value}</b><br>${document.getElementById(d).value}<br><img src="${document.getElementById(i).value}" width="60"><br><button onclick="this.parentElement.remove(); salvarEstado()">Remover</button>`;
+ document.getElementById(l).appendChild(div);
+ salvarEstado();
+}
+
+function updateBars(){
+ pvBar.style.width=(pvAtual.value/pvMax.value*100)+'%';
+ ptBar.style.width=(ptAtual.value/ptMax.value*100)+'%';
+}
+setInterval(updateBars,200);
+
+const STORAGE_KEY='fichaRPG_atual';
+
+function salvarEstado(){
+ const estado={
+  inputs:[...document.querySelectorAll('input,textarea')].map(e=>({id:e.id,value:e.value})),
+  atributos:[...document.querySelectorAll('#atributos input')].map(i=>i.value),
+  itens:itensLista.innerHTML,
+  habilidades:habLista.innerHTML,
+  log:log.innerHTML
+ };
+ localStorage.setItem(STORAGE_KEY,JSON.stringify(estado));
+}
+
+function carregarEstado(){
+ const raw=localStorage.getItem(STORAGE_KEY);
+ if(!raw)return;
+ const estado=JSON.parse(raw);
+ estado.inputs.forEach(o=>{const el=document.getElementById(o.id);if(el)el.value=o.value});
+ document.querySelectorAll('#atributos input').forEach((i,idx)=>{if(estado.atributos)i.value=estado.atributos[idx]});
+ itensLista.innerHTML=estado.itens||'';
+ habLista.innerHTML=estado.habilidades||'';
+ log.innerHTML=estado.log||'';
+ updateBars();
+}
+
+function salvarPersonagem(){
+ salvarEstado();
+ const p={
+  nome:nome.value||'Personagem',
+  imagem:imgFicha.value||'',
+  inputs:[...document.querySelectorAll('input,textarea')].map(i=>({id:i.id,value:i.value})),
+  atributos:[...document.querySelectorAll('#atributos input')].map(i=>i.value),
+  itens:itensLista.innerHTML,
+  habilidades:habLista.innerHTML,
+  log:log.innerHTML
+ };
+ const l=JSON.parse(localStorage.getItem('personagensRPG')||'[]');
+ l.push(p);
+ localStorage.setItem('personagensRPG',JSON.stringify(l));
+ carregarPersonagens();
+ showTab('personagens');
+}
+
+function carregarPersonagens(){
+ const div=document.getElementById('listaPersonagens');
+ div.innerHTML='';
+ const l=JSON.parse(localStorage.getItem('personagensRPG')||'[]');
+ l.forEach((p,i)=>{
+  const d=document.createElement('div');
+  d.className='item';
+  d.innerHTML=`${p.imagem?`<img src="${p.imagem}" width="40"><br>`:''}<b>${p.nome}</b><br><button onclick="carregarPersonagem(${i})">Abrir</button> <button onclick="deletarPersonagem(${i})">Excluir</button>`;
+  div.appendChild(d);
+ });
+}
+
+function carregarPersonagem(i){
+ const l=JSON.parse(localStorage.getItem('personagensRPG')||'[]');
+ const p=l[i];
+ p.inputs.forEach(o=>{const el=document.getElementById(o.id);if(el)el.value=o.value});
+ document.querySelectorAll('#atributos input').forEach((inp,idx)=>inp.value=p.atributos[idx]);
+ itensLista.innerHTML=p.itens;
+ habLista.innerHTML=p.habilidades;
+ log.innerHTML=p.log||'';
+ updateBars();
+ salvarEstado();
+ showTab('descricao');
+}
+
+function deletarPersonagem(i){
+ if(!confirm('Excluir este personagem?'))return;
+ const l=JSON.parse(localStorage.getItem('personagensRPG')||'[]');
+ l.splice(i,1);
+ localStorage.setItem('personagensRPG',JSON.stringify(l));
+ carregarPersonagens();
+}
+
+window.onload=()=>{
+ carregarEstado();
+ carregarPersonagens();
+};
+
+document.addEventListener('input',e=>{
+ if(e.target.matches('input,textarea')) salvarEstado();
+});
+</script>
+</body>
+</html>
